@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AvatarDance.Parameter;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -10,6 +11,7 @@ using UnityEngine;
 using UnityEngine.Playables;
 using UnityEngine.Timeline;
 using VRM;
+using Newtonsoft.Json;
 
 namespace AvatarDance
 {
@@ -21,11 +23,14 @@ namespace AvatarDance
         private GameObject DanceVRM;
         private List<string> DanceName = new List<string>();
 
+        private FaceSync FaceParameter;
+
         // Avatar
         public const int OnlyInThirdPerson = 3;
         public const int LegacyOnlyInFirstPerson = 4;
         public const int OnlyInFirstPerson = 6;
         public const int AlwaysVisible = 10;
+
 
         public AvatarDance()
         {
@@ -92,21 +97,20 @@ namespace AvatarDance
         /// </summary>
         /// <param name="filename"></param>
         /// <param name="set"></param>
-        private IEnumerator OtherDanceLoad(string filename)
+        private IEnumerator DanceLoad(string filename)
         {
             if (!DanceObject) GameObject.Destroy(DanceObject);
             if (filename == "") yield break;
             //ロード済みならアンロードする
             if (assetBundle) assetBundle.Unload(true);
 
-            Logger.log?.Debug($"OtherDanceLoad {filename}");
+            Logger.log?.Debug($"DanceLoad {filename}");
             var asyncLoad = AssetBundle.LoadFromFileAsync(filename);
             yield return asyncLoad;
             assetBundle = asyncLoad.assetBundle;
             var assetLoadRequest = assetBundle.LoadAllAssetsAsync();
             yield return assetLoadRequest;
             AssetsDance = assetLoadRequest.allAssets;
-            Logger.log?.Debug($"OtherDanceLoad End");
 
             foreach (var asset in AssetsDance)
             {
@@ -118,8 +122,29 @@ namespace AvatarDance
                     }
                 }
             }
+
+            //FaceSync用のパラメータがある場合は読み込む
+            FaceSyncJsonLoad(filename);
         }
 
+        /// <summary>
+        /// オプションでFaceSyncJsonがある場合読み込む
+        /// </summary>
+        private void FaceSyncJsonLoad(string filename)
+        {
+            string loadName = filename.Replace(".dance", "_FaceSync.json");
+            if (File.Exists(loadName))
+            {
+                string configuration = File.ReadAllText(loadName);
+                FaceParameter = JsonConvert.DeserializeObject<FaceSync>(configuration);
+
+            }
+        }
+        public class FaceSync
+        {
+            public string[] BaseFace;
+            public string[] VRMFace;
+        }
 
         /// <summary>
         /// VRM取得して、Danceモーションのセット
@@ -127,7 +152,7 @@ namespace AvatarDance
         public IEnumerator GetVRMAndSetDance(int selectNo)
         {
             //選択したDanceをロードする
-            yield return OtherDanceLoad(DanceName[selectNo]);
+            yield return DanceLoad(DanceName[selectNo]);
 
             //読み込み失敗で終了
             if (DanceObject == null) yield break;
@@ -144,8 +169,9 @@ namespace AvatarDance
             if (!SetupStage)
             {
                 var game = GameObject.Find("AvatarDance");
-                SetupStage = GameObject.Instantiate(new GameObject("OnStage"), new Vector3(0f, 0f, 0f), Quaternion.identity, game.GetComponent<Transform>()) as GameObject;
-                
+                SetupStage = GameObject.Instantiate(new GameObject("OnStage"), Vector3.zero, Quaternion.identity, game.GetComponent<Transform>()) as GameObject;
+
+                Logger.log?.Debug($"GetVRMAndSetDance SetupStage {SetupStage.transform.position}  {SetupStage.transform.rotation}");
             }
             SetupStage.SetActive(false);
             
@@ -174,6 +200,10 @@ namespace AvatarDance
 
             secondary.SetActive(true);
             SetupStage.SetActive(true);
+
+            //後で動かさないと動かない
+            SetupStage.transform.localPosition = PluginParameter.Instance.Position() * DanceVRM.transform.localScale.x;
+            SetupStage.transform.localRotation = PluginParameter.Instance.Rotation();
 
             SetupEnd = true;
 
@@ -230,7 +260,7 @@ namespace AvatarDance
         GameObject MenuBgm;
         GameObject Timeline;
         GameObject Apends;
-        public  AudioClip BgmClip;
+        public AudioSource BgmClip;
         private Animator VrmAnimator;
 
         public bool SetupEnd { get; set; }
@@ -247,7 +277,8 @@ namespace AvatarDance
             //BGMをセット
             var bgm = DanceObject.transform.Find("BGM").gameObject;
             Bgm = GameObject.Instantiate(bgm, new Vector3(0f, 0f, 0f), Quaternion.identity, SetupStage.GetComponent<Transform>()) as GameObject;
-            BgmClip = Bgm.GetComponent<AudioSource>().clip;
+            Bgm.name = "BGM";
+            BgmClip = Bgm.GetComponent<AudioSource>();
             Logger.log?.Debug($"OnAvatarDance Bgm");
 
             //特殊処理用があれば追加
@@ -275,9 +306,6 @@ namespace AvatarDance
                 }
             }
 
-            //スクリプトがある場合追加(自分が追加した場合しか対応しない)
-            ScriptAttach();
-
 
 
             //Animationがなければ作成
@@ -302,6 +330,9 @@ namespace AvatarDance
                     vrmAnimator.runtimeAnimatorController = animator.runtimeAnimatorController;
                 }
 
+            //追加スクリプトかあるか確認してある場合はアタッチする
+            AnimationScriptAttach(animation, DanceVRM);
+
             Logger.log?.Debug($"OnAvatarDance animation set end");
 
             var timeline = DanceObject.transform.Find("Animation/TimeLine");
@@ -322,6 +353,15 @@ namespace AvatarDance
                             {
                                 director.SetGenericBinding(bind.sourceObject, BgmClip);
                             }
+                            else if (bind.streamName.Contains("Spectrum"))
+                            { //Spectrumがある場合は名称と同じオブジェクトにBGMがついていると仮定してリンクする
+                                var spe = Bgm.transform.Find($"Spectrum/{bind.streamName}");
+                                Logger.log?.Debug($"OnAvatarDance Spectrum {spe is null} {($"Spectrum/{bind.streamName}")}");
+
+                                var audioClip = spe.GetComponent<AudioSource>();
+                                director.SetGenericBinding(bind.sourceObject, audioClip);
+                                SpectrumScriptAttach(spe);
+                            }
                         }
 
                 //Timelineをセット
@@ -331,8 +371,12 @@ namespace AvatarDance
             Logger.log?.Debug($"OnAvatarDance TimeLine set end");
 
 
+            //スクリプトがある場合追加(自分が追加した場合しか対応しない)
+            ScriptAttach();
 
-            //VRMを指定座標に移動
+
+            //VRMの拡大率を取得してSteageのサイズを変更する
+            Stage.transform.localScale = DanceVRM.transform.localScale;
 
 
             ////Stageをセット
@@ -370,6 +414,123 @@ namespace AvatarDance
 
         }
 
+        /// <summary>
+        /// Animation専用スクリプトがある場合アタッチする
+        /// </summary>
+        private void AnimationScriptAttach(Transform animation,GameObject SetObject)
+        {
+
+            //すべてのオブジェクトの名称に[_Sc_]が含まれてるか確認し、その後ろに付いてる名称が追加するスクリプトの名称としてアタッチする
+            foreach (GameObject childTransform in animation.GetComponentsInChildren<Transform>().Select(t => t.gameObject).ToArray())
+            {
+
+                //PSc_で始まる場合は親オブジェクトにつける
+                if (childTransform.name.Contains("PSc_"))
+                {
+                    var scripts = childTransform.name.Substring(childTransform.name.IndexOf("PSc_") + 4).Split('/');
+                    foreach (var names in scripts)
+                    {
+                        if (names == "FaceSyncController")
+                        {
+                            if (FaceParameter == null)
+                                Logger.log?.Debug($"FaceSyncController Parameter Null");
+                            else
+                            {
+                                Logger.log?.Debug($"FaceSyncController Attach");
+                                SetObject.AddComponent<FaceSyncController>();
+                                var setting = SetObject.transform.GetComponent<FaceSyncController>();
+
+                                setting.BaseFace = FaceParameter.BaseFace;
+                                setting.VRMFace = FaceParameter.VRMFace;
+
+                                setting.StartUp(DanceVRM);
+                            }
+                        }
+                        else if (names.Contains("MusicStarter"))
+                        {
+                            Logger.log?.Debug($"MusicStarter Attach");
+                            SetObject.AddComponent<MusicStarter>();
+                            var setting = SetObject.transform.GetComponent<MusicStarter>();
+                            List<AudioSource> audioClips = new List<AudioSource>();
+                            var param = names.Substring(names.IndexOf("[") + 1, names.IndexOf("]") - names.IndexOf("[") - 1).Split(':');
+                            foreach(string para in param)
+                            {
+                                foreach (Transform aco in SetupStage.GetComponentsInChildren<Transform>())
+                                {
+                                    if (aco.name == para)
+                                    {
+                                        var ac = aco.GetComponent<AudioSource>();
+                                        audioClips.Add(ac);
+                                    }
+                                }
+
+                                //    var aco = SetupStage.transform.Find(para);
+                                //var acoc = SetupStage.transform.FindChild(para);
+                                //Logger.log?.Debug($"MusicStarter Find {para} {aco is null}");
+                                ////if (aco != null)
+                                ////{
+                                //var ac = aco.GetComponent<AudioSource>();
+                                //    audioClips.Add(ac);
+                                //////}
+                            }
+                            var l = audioClips.ToArray();
+                            setting.refAudioSource = l ;
+                        }
+                    }
+                }
+            }
+        }
+
+        private void SpectrumScriptAttach(Transform spectrum)
+        {
+
+            //すべてのオブジェクトの名称に[_Sc_]が含まれてるか確認し、その後ろに付いてる名称が追加するスクリプトの名称としてアタッチする
+            foreach (GameObject childTransform in spectrum.GetComponentsInChildren<Transform>().Select(t => t.gameObject).ToArray())
+            {
+
+                //PSc_で始まる場合は親オブジェクトにつける
+                if (childTransform.name.Contains("PSc_"))
+                {
+                    var scripts = childTransform.name.Substring(childTransform.name.IndexOf("PSc_") + 4).Split('/');
+                    foreach (var names in scripts)
+                    {
+                        if (names.Contains("BandPassFilter"))
+                        {
+                            Logger.log?.Debug($"BandPassFilter Attach");
+                            var param = names.Substring(names.IndexOf("[") + 1, names.IndexOf("]") - names.IndexOf("[") - 1).Split(':');
+                            Logger.log?.Debug($"BandPassFilter Attach");
+                            spectrum.gameObject.AddComponent<Reaktion.BandPassFilter>();
+                            var setting = spectrum.transform.GetComponent<Reaktion.BandPassFilter>();
+
+                            setting.cutoff = float.Parse(param[0]);
+                            setting.q = float.Parse(param[1]);
+                        }
+                        else if (names.Contains("AudioInjector"))
+                        {
+                            Logger.log?.Debug($"AudioInjector Attach");
+                            spectrum.gameObject.AddComponent<Reaktion.AudioInjector>();
+                            var setting = spectrum.transform.GetComponent<Reaktion.AudioInjector>();
+
+                            setting.mute = true;
+                        }
+                        else if (names.Contains("Reaktor"))
+                        {
+                            Logger.log?.Debug($"Reaktor Attach");
+                            spectrum.gameObject.AddComponent<Reaktion.Reaktor>();
+                            var setting = spectrum.transform.GetComponent<Reaktion.Reaktor>();
+                            setting.StartUp();
+                            setting.injector.mode = Reaktion.GenericLink<Reaktion.InjectorBase>.Mode.Automatic;
+                            setting.sensitivity = 1.0f;
+                            setting.dynamicRange = 10.0f;
+                        }
+
+                    }
+                }
+            }
+            
+        }
+
+
         //専用スクリプト郡
         LipSyncController lipSyncController;
         CameraSwitcher cameraSwitcher;
@@ -382,165 +543,262 @@ namespace AvatarDance
             //すべてのオブジェクトの名称に[_Sc_]が含まれてるか確認し、その後ろに付いてる名称が追加するスクリプトの名称としてアタッチする
             foreach (GameObject childTransform in SetupStage.GetComponentsInChildren<Transform>().Select(t => t.gameObject).ToArray())
             {
-                if (childTransform.name.Contains("_Sc_"))
+                
+                //PSc_で始まる場合は親オブジェクトにつける
+                if (childTransform.name.Contains("PSc_"))
                 {
                     var names = childTransform.name.Substring(childTransform.name.IndexOf("_Sc_") + 4);
-                    if (names == "LipSyncController")
+                    if (names == "FaceSyncController")
                     {
-                        Logger.log?.Debug($"LipSyncController Attach");
-                        childTransform.AddComponent<LipSyncController>();
-                        var setting = lipSyncController = childTransform.transform.GetComponent<LipSyncController>();
-                        //var setting = new LipSyncController();
-                        ////var setting = lipSyncController;
-                        setting.targetName = "DanceVRM";
-                        setting.BlendShapeA = BlendShapePreset.A;
-                        setting.BlendShapeI = BlendShapePreset.I;
-                        setting.BlendShapeU = BlendShapePreset.U;
-                        setting.BlendShapeE = BlendShapePreset.E;
-                        setting.BlendShapeO = BlendShapePreset.O;
-
-                        //Node用オブジェクト取得
-                        setting.nodeA = childTransform.transform.Find("rsyncRoot/rsync_A");
-                        setting.nodeI = childTransform.transform.Find("rsyncRoot/rsync_I");
-                        setting.nodeU = childTransform.transform.Find("rsyncRoot/rsync_U");
-                        setting.nodeE = childTransform.transform.Find("rsyncRoot/rsync_E");
-                        setting.nodeO = childTransform.transform.Find("rsyncRoot/rsync_O");
-
-
-                        setting.weightCurve = AnimationCurve.Linear(
-                                                                    timeStart: 0.01f,
-                                                                    valueStart: 0f,
-                                                                    timeEnd: 0.03f,
-                                                                    valueEnd: 1f
-                                                                    );
-
-
-                        //初期処理する
-                        setting.StartUp(DanceVRM);
-                    }
-                    else if (names == "CameraSwitcher")
-                    {
-                        Logger.log?.Debug($"CameraSwitcher Attach");
-                        childTransform.AddComponent<CameraSwitcher>();
-                        var setting = cameraSwitcher = childTransform.transform.GetComponent<CameraSwitcher>();
-                        setting.targetName = "Head";
-                        //初期処理する
-                        setting.StartUp(DanceVRM);
-                    }
-                    else if (names == "ForceAspectRatio")
-                    {
-                        Logger.log?.Debug($"ForceAspectRatio Attach");
-                        childTransform.AddComponent<ForceAspectRatio>();
-                        var setting = forceAspectRatio = childTransform.transform.GetComponent<ForceAspectRatio>();
-                        setting.horizontal = 4;
-                        setting.vertical = 3;
-                    }
-                    else if (names == "MirrorReflection")
-                    {
-                        Logger.log?.Debug($"MirrorReflection Attach");
-                        childTransform.AddComponent<MirrorReflection>();
-                        var setting = mirrorReflection = childTransform.transform.GetComponent<MirrorReflection>();
-                        setting.m_TextureSize = 1024;
-                        setting.m_DisablePixelLights = true;
-                        setting.m_ClipPlaneOffset = 0;
-
-                        //2個めに必要なMaterialを持ってきてる
-                        var mesh = childTransform.transform.GetComponent<MeshRenderer>();
-                        setting.m_matCopyDepth = mesh.materials[1];
-
-                        //RenderTexture再設定
-                        RenderTexture renderTexture = new RenderTexture(1024, 1024, 0, RenderTextureFormat.ARGB32);
-                        setting.m_ReflectionTexture = renderTexture;
-                        mesh.materials[0].mainTexture = renderTexture;
-                        RenderTexture renderTextureD = new RenderTexture(1024, 1024, 24, RenderTextureFormat.Depth);
-                        setting.m_ReflectionDepthTexture = renderTextureD;
-                    }
-                    else if (names == "BackScreenRenderSet")
-                    {
-                        Logger.log?.Debug($"BackScreenRenderSet Attach");
-                        childTransform.AddComponent<BackScreenRenderSet>();
-                    }
-                    else if (names.Contains("ConstantMotion"))
-                    {
-                        var param = names.Substring(names.IndexOf("[")  + 1, names.IndexOf("]") - names.IndexOf("[") - 1);
-                        Logger.log?.Debug($"ConstantMotion Attach {param}");
-                        childTransform.AddComponent<ConstantMotion>();
-                        var setting = childTransform.transform.GetComponent<ConstantMotion>();
-                        setting.rotation.velocity = Int32.Parse(param);
-                        setting.rotation.randomness = 0.3f;
-                        setting.rotation.mode = ConstantMotion.TransformMode.YAxis;
-                        setting.position.mode = ConstantMotion.TransformMode.Off;
-                        setting.useLocalCoordinate = true;
-                    }
-                    else if (names.Contains("SelfDestruction"))
-                    {
-                        var param = names.Substring(names.IndexOf("[") + 1, names.IndexOf("]") - names.IndexOf("[") - 1);
-                        Logger.log?.Debug($"SelfDestruction Attach {param}");
-                        childTransform.AddComponent<SelfDestruction>();
-                        var setting = childTransform.transform.GetComponent<SelfDestruction>();
-                        setting.conditionType = SelfDestruction.ConditionType.Time;
-                        setting.lifetime = float.Parse(param);
-                        setting.enabled = false;
-                    }
-                    else if (names.Contains("Spawner_One"))
-                    {
-                        Logger.log?.Debug($"Spawner_One Attach");
-                        childTransform.AddComponent<Spawner_One>();
-                        var setting = childTransform.transform.GetComponent<Spawner_One>();
-
-                        var tagetGameObject = Apends.transform.Find("Effect/Laser_Sc_SelfDestruction[1.5]").gameObject;
-                        Logger.log?.Debug($"Spawner_One Effect Setup {tagetGameObject is null}");
-                        setting.StartUp(tagetGameObject);
-                    }
-                    else if (names.Contains("Spawner_Multi"))
-                    {
-                        Logger.log?.Debug($"Spawner_Multi Attach");
-                        childTransform.AddComponent<Spawner_Multi>();
-                        var setting = childTransform.transform.GetComponent<Spawner_Multi>();
-
-                        var tagetGameObject = Apends.transform.Find("Effect/Laser_Sc_SelfDestruction[1.5]").gameObject;
-                        Transform[] point = new Transform[14];
-                        int setpoint = 0;
-                        foreach (Transform childTransformPoint in childTransform.GetComponentsInChildren<Transform>())
+                        if (FaceParameter == null)
+                            Logger.log?.Debug($"FaceSyncController Parameter Null");
+                        else
                         {
-                            if (childTransformPoint.name == "Point")
-                            {
-                                point[setpoint] = childTransformPoint;
-                                setpoint += 1;
-                            }
+                            Logger.log?.Debug($"FaceSyncController Attach");
+                            childTransform.transform.parent.gameObject.AddComponent<FaceSyncController>();
+                            var setting = childTransform.transform.parent.transform.GetComponent<FaceSyncController>();
+
+                            setting.BaseFace = FaceParameter.BaseFace;
+                            setting.VRMFace = FaceParameter.VRMFace;
+
+                            setting.StartUp(DanceVRM);
                         }
-                        setting.StartUp(tagetGameObject, point, Apends);
                     }
+                }
+                
+                
+                //_Sc_の場合は自分にScriptをつける
+                if (childTransform.name.Contains("_Sc_"))
+                {
+                    //var names = childTransform.name.Substring(childTransform.name.IndexOf("_Sc_") + 4);
+                    var scripts = childTransform.name.Substring(childTransform.name.IndexOf("_Sc_") + 4).Split('/');
+                    foreach(var names in scripts)
+                    { 
+                        if (names == "LipSyncController")
+                        {
+                            Logger.log?.Debug($"LipSyncController Attach");
+                            childTransform.AddComponent<LipSyncController>();
+                            var setting = lipSyncController = childTransform.transform.GetComponent<LipSyncController>();
+                            //var setting = new LipSyncController();
+                            ////var setting = lipSyncController;
+                            setting.targetName = "DanceVRM";
+                            setting.BlendShapeA = BlendShapePreset.A;
+                            setting.BlendShapeI = BlendShapePreset.I;
+                            setting.BlendShapeU = BlendShapePreset.U;
+                            setting.BlendShapeE = BlendShapePreset.E;
+                            setting.BlendShapeO = BlendShapePreset.O;
 
-                    else if (names.Contains("VariableMotion"))
-                    {
-                        Logger.log?.Debug($"VariableMotion Attach");
-                        childTransform.AddComponent<VariableMotion>();
-                        var setting = childTransform.transform.GetComponent<VariableMotion>();
-                        setting.rotation.speed = 0.1f;
-                        setting.rotation.randomness = 0;
-                        setting.rotation.amplitude = 70;
-                        setting.rotation.curve = AnimationCurve.EaseInOut(
-                                                                    timeStart: 0f,
-                                                                    valueStart: 0f,
-                                                                    timeEnd: 1f,
-                                                                    valueEnd: 1f
-                                                                    );
-                        setting.rotation.curve.preWrapMode = WrapMode.PingPong;
+                            //Node用オブジェクト取得
+                            setting.nodeA = childTransform.transform.Find("rsyncRoot/rsync_A");
+                            setting.nodeI = childTransform.transform.Find("rsyncRoot/rsync_I");
+                            setting.nodeU = childTransform.transform.Find("rsyncRoot/rsync_U");
+                            setting.nodeE = childTransform.transform.Find("rsyncRoot/rsync_E");
+                            setting.nodeO = childTransform.transform.Find("rsyncRoot/rsync_O");
 
-                        setting.rotation.mode = VariableMotion.TransformMode.YAxis;
-                        setting.position.mode = VariableMotion.TransformMode.Off;
-                        setting.scale.mode = VariableMotion.TransformMode.Off;
 
-                        setting.useLocalCoordinate = true;
+                            setting.weightCurve = AnimationCurve.Linear(
+                                                                        timeStart: 0.01f,
+                                                                        valueStart: 0f,
+                                                                        timeEnd: 0.03f,
+                                                                        valueEnd: 1f
+                                                                        );
+
+
+                            //初期処理する
+                            setting.StartUp(DanceVRM);
+                        }
+                        else if (names == "CameraSwitcher")
+                        {
+                            Logger.log?.Debug($"CameraSwitcher Attach");
+                            childTransform.AddComponent<CameraSwitcher>();
+                            var setting = cameraSwitcher = childTransform.transform.GetComponent<CameraSwitcher>();
+
+                            var op = childTransform.transform.Find("CameraSwitcher_OP");
+                            setting.points = op.GetComponentsInChildren<Transform>();
+                            Logger.log?.Debug($"CameraSwitcher Points {setting.points}");
+                            setting.interval = 10;
+                            setting.stability = 1;
+                            setting.rotationSpeed = 2;
+                            setting.minDistance = 0.5f;
+                            setting.fovCurve = AnimationCurve.Linear(1, 4.9623f, 10, 4.9623f);
+
+                            //初期処理する
+                            setting.StartUp(DanceVRM);
+                        }
+                        else if (names == "ForceAspectRatio")
+                        {
+                            Logger.log?.Debug($"ForceAspectRatio Attach");
+                            childTransform.AddComponent<ForceAspectRatio>();
+                            var setting = forceAspectRatio = childTransform.transform.GetComponent<ForceAspectRatio>();
+                            setting.horizontal = 4;
+                            setting.vertical = 3;
+                        }
+                        else if (names == "MirrorReflectionVR")
+                        {
+                            Logger.log?.Debug($"MirrorReflectionVR Attach");
+                            childTransform.AddComponent<MirrorReflectionVR>();
+                            var setting = childTransform.transform.GetComponent<MirrorReflectionVR>();
+                            setting.m_TextureSize = 1024*2;
+                            setting.m_DisablePixelLights = true;
+                            setting.m_ClipPlaneOffset = 0;
+                        }
+                        else if (names == "MirrorReflection")
+                        {
+                            Logger.log?.Debug($"MirrorReflection Attach");
+                            childTransform.AddComponent<MirrorReflection>();
+                            var setting = mirrorReflection = childTransform.transform.GetComponent<MirrorReflection>();
+                            setting.m_TextureSize = 1024*2;
+                            setting.m_DisablePixelLights = true;
+                            setting.m_ClipPlaneOffset = 0;
+
+                            //2個めに必要なMaterialを持ってきてる
+                            var mesh = childTransform.transform.GetComponent<MeshRenderer>();
+                            setting.m_matCopyDepth = mesh.materials[1];
+
+                            //1個目のマテリアルにセンター位置あるので設定する
+                            mesh.materials[0].SetVector("_Center", PluginParameter.Instance.Position() * DanceVRM.transform.localScale.x);
+
+
+                            //RenderTexture再設定
+                            //RenderTexture renderTexture = new RenderTexture(1024*2, 1024 * 2, 0, RenderTextureFormat.ARGB32);
+                            //setting.m_ReflectionTexture = renderTexture;
+                            //mesh.materials[0].mainTexture = renderTexture;
+                            RenderTexture renderTextureD = new RenderTexture(1024 * 2, 1024 * 2, 24, RenderTextureFormat.Depth);
+                            setting.m_ReflectionDepthTexture = renderTextureD;
+                        }
+                        else if (names == "BackScreenRenderSet")
+                        {
+                            Logger.log?.Debug($"BackScreenRenderSet Attach");
+                            childTransform.AddComponent<BackScreenRenderSet>();
+                        }
+                        else if (names.Contains("ConstantMotion"))
+                        {
+                            var param = names.Substring(names.IndexOf("[") + 1, names.IndexOf("]") - names.IndexOf("[") - 1);
+                            Logger.log?.Debug($"ConstantMotion Attach {param}");
+                            childTransform.AddComponent<ConstantMotion>();
+                            var setting = childTransform.transform.GetComponent<ConstantMotion>();
+                            setting.rotation.velocity = Int32.Parse(param);
+                            setting.rotation.randomness = 0.3f;
+                            setting.rotation.mode = ConstantMotion.TransformMode.YAxis;
+                            setting.position.mode = ConstantMotion.TransformMode.Off;
+                            setting.useLocalCoordinate = true;
+                        }
+                        else if (names.Contains("SelfDestruction"))
+                        {
+                            var param = names.Substring(names.IndexOf("[") + 1, names.IndexOf("]") - names.IndexOf("[") - 1);
+                            Logger.log?.Debug($"SelfDestruction Attach {param}");
+                            childTransform.AddComponent<SelfDestruction>();
+                            var setting = childTransform.transform.GetComponent<SelfDestruction>();
+                            setting.conditionType = SelfDestruction.ConditionType.Time;
+                            setting.lifetime = float.Parse(param);
+                            setting.enabled = false;
+                        }
+                        else if (names.Contains("Spawner_One"))
+                        {
+                            Logger.log?.Debug($"Spawner_One Attach");
+                            childTransform.AddComponent<Spawner_One>();
+                            var setting = childTransform.transform.GetComponent<Spawner_One>();
+
+                            var tagetGameObject = Apends.transform.Find("Effect/Laser_Sc_SelfDestruction[1.5]").gameObject;
+                            Logger.log?.Debug($"Spawner_One Effect Setup {tagetGameObject is null}");
+                            setting.StartUp(tagetGameObject);
+                        }
+                        else if (names.Contains("Spawner_Multi"))
+                        {
+                            Logger.log?.Debug($"Spawner_Multi Attach");
+                            childTransform.AddComponent<Spawner_Multi>();
+                            var setting = childTransform.transform.GetComponent<Spawner_Multi>();
+
+                            var tagetGameObject = Apends.transform.Find("Effect/Laser_Sc_SelfDestruction[1.5]").gameObject;
+                            Transform[] point = new Transform[14];
+                            int setpoint = 0;
+                            foreach (Transform childTransformPoint in childTransform.GetComponentsInChildren<Transform>())
+                            {
+                                if (childTransformPoint.name == "Point")
+                                {
+                                    point[setpoint] = childTransformPoint;
+                                    setpoint += 1;
+                                }
+                            }
+                            setting.StartUp(tagetGameObject, point, Apends);
+                        }
+
+                        else if (names.Contains("VariableMotion"))
+                        {
+                            Logger.log?.Debug($"VariableMotion Attach");
+                            childTransform.AddComponent<VariableMotion>();
+                            var setting = childTransform.transform.GetComponent<VariableMotion>();
+                            setting.rotation.speed = 0.1f;
+                            setting.rotation.randomness = 0;
+                            setting.rotation.amplitude = 70;
+                            setting.rotation.curve = AnimationCurve.EaseInOut(
+                                                                        timeStart: 0f,
+                                                                        valueStart: 0f,
+                                                                        timeEnd: 1f,
+                                                                        valueEnd: 1f
+                                                                        );
+                            setting.rotation.curve.preWrapMode = WrapMode.PingPong;
+
+                            setting.rotation.mode = VariableMotion.TransformMode.YAxis;
+                            setting.position.mode = VariableMotion.TransformMode.Off;
+                            setting.scale.mode = VariableMotion.TransformMode.Off;
+
+                            setting.useLocalCoordinate = true;
+                        }
+                        else if (names == "JitterMotion")
+                        {
+                            Logger.log?.Debug($"JitterMotion Attach");
+                            childTransform.AddComponent<JitterMotion>();
+                        }
+                        else if (names == "Visualizer")
+                        {
+                            Logger.log?.Debug($"Visualizer Attach");
+                            var setting = childTransform.AddComponent<Visualizer>();
+                            setting.spectrum1.mode = Reaktion.GenericLink<Reaktion.Reaktor>.Mode.ByName;
+                            setting.spectrum2.mode = Reaktion.GenericLink<Reaktion.Reaktor>.Mode.ByName;
+                            setting.spectrum3.mode = Reaktion.GenericLink<Reaktion.Reaktor>.Mode.ByName;
+                            setting.spectrum4.mode = Reaktion.GenericLink<Reaktion.Reaktor>.Mode.ByName;
+                            setting.spectrum1.name = "Spectrum 1";
+                            setting.spectrum2.name = "Spectrum 2";
+                            setting.spectrum3.name = "Spectrum 3";
+                            setting.spectrum4.name = "Spectrum 4";
+
+                        }
+                        else if (names.Contains("AnimatorGear"))
+                        {
+                            var param = names.Substring(names.IndexOf("[") + 1, names.IndexOf("]") - names.IndexOf("[") - 1);
+                            Logger.log?.Debug($"AnimatorGear Attach {param}");
+                            childTransform.AddComponent<Reaktion.AnimatorGear>();
+                            var setting = childTransform.transform.GetComponent<Reaktion.AnimatorGear>();
+                            setting.reaktor.mode = Reaktion.GenericLink<Reaktion.Reaktor>.Mode.ByName;
+                            setting.reaktor.name = param;
+                            setting.speed.enabled = false;
+                            setting.trigger.enabled = true;
+                            setting.trigger.threshold = 0.75f;
+                            setting.trigger.interval = 0.1f;
+                            setting.triggerName = "Bang";
+                        }
+                        else if (names.Contains("MaterialGear"))
+                        {
+                            var param = names.Substring(names.IndexOf("[") + 1, names.IndexOf("]") - names.IndexOf("[") - 1);
+                            Logger.log?.Debug($"MaterialGear Attach {param}");
+                            childTransform.AddComponent<Reaktion.MaterialGear>();
+                            var setting = childTransform.transform.GetComponent<Reaktion.MaterialGear>();
+                            setting.reaktor.mode = Reaktion.GenericLink<Reaktion.Reaktor>.Mode.ByName;
+                            setting.reaktor.name = param;
+                            setting.materialIndex = 1;
+                            setting.targetType = Reaktion.MaterialGear.TargetType.Float;
+                            setting.targetName = "_Amplitude";
+                            setting.floatCurve = AnimationCurve.EaseInOut(
+                                                                        timeStart: 0f,
+                                                                        valueStart: 0f,
+                                                                        timeEnd: 1f,
+                                                                        valueEnd: 2f
+                                                                        );
+                        }
+
+
                     }
-                    else if (names == "JitterMotion")
-                    {
-                        Logger.log?.Debug($"JitterMotion Attach");
-                        childTransform.AddComponent<JitterMotion>();
-                    }
-
-                    
 
                 }
             }

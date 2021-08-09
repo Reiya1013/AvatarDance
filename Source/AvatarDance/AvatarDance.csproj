@@ -50,6 +50,10 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>D:\Steam\steamapps\common\Beat Saber\Plugins\BSML.dll</HintPath>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\Steam\steamapps\common\Beat Saber\Libs\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -128,6 +132,10 @@
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.VRModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="UnityEngine.XRModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\Steam\steamapps\common\Beat Saber\Beat Saber_Data\Managed\UnityEngine.XRModule.dll</HintPath>
+    </Reference>
     <Reference Include="VMCAvatar, Version=0.5.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>D:\Steam\steamapps\common\Beat Saber\Plugins\VMCAvatar.dll</HintPath>
@@ -137,15 +145,51 @@
     <Compile Include="AddScript\BackScreenRenderSet.cs" />
     <Compile Include="AddScript\CameraSwitcher.cs" />
     <Compile Include="AddScript\ConstantMotion.cs" />
+    <Compile Include="AddScript\FaceSyncController.cs" />
     <Compile Include="AddScript\ForceAspectRatio.cs" />
     <Compile Include="AddScript\JitterMotion.cs" />
     <Compile Include="AddScript\LipSyncController.cs" />
+    <Compile Include="AddScript\Mirror.cs" />
     <Compile Include="AddScript\MirrorReflection.cs" />
+    <Compile Include="AddScript\MirrorReflectionVR.cs" />
+    <Compile Include="AddScript\MusicStarter.cs" />
+    <Compile Include="AddScript\Reaktion\Gear\AnimatorGear.cs" />
+    <Compile Include="AddScript\Reaktion\Gear\CameraGear.cs" />
+    <Compile Include="AddScript\Reaktion\Gear\ConstantMotionGear.cs" />
+    <Compile Include="AddScript\Reaktion\Gear\GlobalSettingGear.cs" />
+    <Compile Include="AddScript\Reaktion\Gear\JitterMotionGear.cs" />
+    <Compile Include="AddScript\Reaktion\Gear\LightGear.cs" />
+    <Compile Include="AddScript\Reaktion\Gear\MaterialGear.cs" />
+    <Compile Include="AddScript\Reaktion\Gear\ParticleSystemGear.cs" />
+    <Compile Include="AddScript\Reaktion\Gear\SpawnerGear.cs" />
+    <Compile Include="AddScript\Reaktion\Gear\TransformGear.cs" />
+    <Compile Include="AddScript\Reaktion\Injector\AudioInjector.cs" />
+    <Compile Include="AddScript\Reaktion\Internal\GenericLink.cs" />
+    <Compile Include="AddScript\Reaktion\Internal\InjectorBase.cs" />
+    <Compile Include="AddScript\Reaktion\Internal\InjectorLink.cs" />
+    <Compile Include="AddScript\Reaktion\Internal\MidiJack.cs" />
+    <Compile Include="AddScript\Reaktion\Internal\Modifier.cs" />
+    <Compile Include="AddScript\Reaktion\Internal\Perlin.cs" />
+    <Compile Include="AddScript\Reaktion\Internal\ReaktorLink.cs" />
+    <Compile Include="AddScript\Reaktion\Internal\Remote.cs" />
+    <Compile Include="AddScript\Reaktion\Internal\Trigger.cs" />
+    <Compile Include="AddScript\Reaktion\Reaktor\Reaktor.cs" />
+    <Compile Include="AddScript\Reaktion\Utility\BandPassFilter.cs" />
+    <Compile Include="AddScript\Reaktion\Utility\ConstantMotion.cs" />
+    <Compile Include="AddScript\Reaktion\Utility\JitterMotion.cs" />
+    <Compile Include="AddScript\Reaktion\Utility\ObjectParticleSystem.cs" />
+    <Compile Include="AddScript\Reaktion\Utility\Planter.cs" />
+    <Compile Include="AddScript\Reaktion\Utility\SelfDestruction.cs" />
+    <Compile Include="AddScript\Reaktion\Utility\Spawner.cs" />
+    <Compile Include="AddScript\Reaktion\Utility\TurbulentMotion.cs" />
+    <Compile Include="AddScript\Reaktion\Utility\VariableMotion.cs" />
     <Compile Include="AddScript\SelfDestruction.cs" />
     <Compile Include="AddScript\Spawner.cs" />
     <Compile Include="AddScript\Spawner_Multi.cs" />
     <Compile Include="AddScript\Spawner_One.cs" />
     <Compile Include="AddScript\VariableMotion.cs" />
+    <Compile Include="AddScript\Visualizer.cs" />
+    <Compile Include="Parameter\PluginParameter.cs" />
     <Compile Include="Source\AvatarDance.cs" />
     <Compile Include="Source\Logger.cs" />
     <Compile Include="Plugin.cs" />
@@ -159,6 +203,41 @@
     <EmbeddedResource Include="manifest.json" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="AddScript\Reaktion\Editor.meta" />
+    <None Include="AddScript\Reaktion\Gear.meta" />
+    <None Include="AddScript\Reaktion\Gear\AnimatorGear.cs.meta" />
+    <None Include="AddScript\Reaktion\Gear\CameraGear.cs.meta" />
+    <None Include="AddScript\Reaktion\Gear\ConstantMotionGear.cs.meta" />
+    <None Include="AddScript\Reaktion\Gear\GlobalSettingGear.cs.meta" />
+    <None Include="AddScript\Reaktion\Gear\JitterMotionGear.cs.meta" />
+    <None Include="AddScript\Reaktion\Gear\LightGear.cs.meta" />
+    <None Include="AddScript\Reaktion\Gear\MaterialGear.cs.meta" />
+    <None Include="AddScript\Reaktion\Gear\ParticleSystemGear.cs.meta" />
+    <None Include="AddScript\Reaktion\Gear\SpawnerGear.cs.meta" />
+    <None Include="AddScript\Reaktion\Gear\TransformGear.cs.meta" />
+    <None Include="AddScript\Reaktion\Injector.meta" />
+    <None Include="AddScript\Reaktion\Internal.meta" />
+    <None Include="AddScript\Reaktion\Internal\GenericLink.cs.meta" />
+    <None Include="AddScript\Reaktion\Internal\InjectorBase.cs.meta" />
+    <None Include="AddScript\Reaktion\Internal\InjectorLink.cs.meta" />
+    <None Include="AddScript\Reaktion\Internal\MidiJack.cs.meta" />
+    <None Include="AddScript\Reaktion\Internal\Modifier.cs.meta" />
+    <None Include="AddScript\Reaktion\Internal\Perlin.cs.meta" />
+    <None Include="AddScript\Reaktion\Internal\ReaktorLink.cs.meta" />
+    <None Include="AddScript\Reaktion\Internal\Remote.cs.meta" />
+    <None Include="AddScript\Reaktion\Internal\Trigger.cs.meta" />
+    <None Include="AddScript\Reaktion\Reaktor.meta" />
+    <None Include="AddScript\Reaktion\Reaktor\Reaktor.cs.meta" />
+    <None Include="AddScript\Reaktion\Utility.meta" />
+    <None Include="AddScript\Reaktion\Utility\BandPassFilter.cs.meta" />
+    <None Include="AddScript\Reaktion\Utility\ConstantMotion.cs.meta" />
+    <None Include="AddScript\Reaktion\Utility\JitterMotion.cs.meta" />
+    <None Include="AddScript\Reaktion\Utility\ObjectParticleSystem.cs.meta" />
+    <None Include="AddScript\Reaktion\Utility\Planter.cs.meta" />
+    <None Include="AddScript\Reaktion\Utility\SelfDestruction.cs.meta" />
+    <None Include="AddScript\Reaktion\Utility\Spawner.cs.meta" />
+    <None Include="AddScript\Reaktion\Utility\TurbulentMotion.cs.meta" />
+    <None Include="AddScript\Reaktion\Utility\VariableMotion.cs.meta" />
     <None Include="Directory.Build.props" Condition="Exists('Directory.Build.props')" />
     <None Include="Directory.Build.targets" Condition="Exists('Directory.Build.targets')" />
     <None Include="AvatarDance.csproj.user" Condition="Exists('AvatarDance.csproj.user')" />
@@ -173,7 +252,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Harmony\" />
-    <Folder Include="Parameter\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

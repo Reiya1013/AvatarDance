@@ -1,4 +1,5 @@
-﻿using IPA;
+﻿using AvatarDance.Parameter;
+using IPA;
 using IPA.Config;
 using IPA.Config.Stores;
 using System;
@@ -25,9 +26,10 @@ namespace AvatarDance
         /// [Init] methods that use a Constructor or called before regular methods like InitWithConfig.
         /// Only use [Init] with one Constructor.
         /// </summary>
-        public void Init(IPALogger logger)
+        public void Init(IPALogger logger, Config conf)
         {
             Instance = this;
+            PluginParameter.Instance = conf.Generated<PluginParameter>();
             Logger.log = logger;
             Logger.log.Info("AvatarDance initialized.");
         }

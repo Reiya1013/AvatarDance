@@ -3,7 +3,6 @@ using System.Collections;
 
 public class CameraSwitcher : MonoBehaviour
 {
-    public string targetName;
     public Transform[] points;
     public float interval = 2.0f;
     public float stability = 0.5f;
@@ -26,6 +25,10 @@ public class CameraSwitcher : MonoBehaviour
         //        var dofFx = GetComponentInChildren<DepthOfFieldScatter>();
         //        if (dofFx) dofFx.focalTransform = target;
 
+    }
+
+    void Start()
+    {
         // Start auto-changer if it's enabled.
         if (autoChange) StartAutoChange();
     }
