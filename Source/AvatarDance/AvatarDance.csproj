@@ -54,6 +54,10 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>D:\Steam\steamapps\common\Beat Saber\Libs\Newtonsoft.Json.dll</HintPath>
     </Reference>
+    <Reference Include="SteamVR, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>D:\Steam\steamapps\common\Beat Saber\Beat Saber_Data\Managed\SteamVR.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -149,10 +153,11 @@
     <Compile Include="AddScript\ForceAspectRatio.cs" />
     <Compile Include="AddScript\JitterMotion.cs" />
     <Compile Include="AddScript\LipSyncController.cs" />
-    <Compile Include="AddScript\Mirror.cs" />
+    <Compile Include="AddScript\DVRSDK\Mirror.cs" />
     <Compile Include="AddScript\MirrorReflection.cs" />
     <Compile Include="AddScript\MirrorReflectionVR.cs" />
     <Compile Include="AddScript\MusicStarter.cs" />
+    <Compile Include="AddScript\ProbeController.cs" />
     <Compile Include="AddScript\Reaktion\Gear\AnimatorGear.cs" />
     <Compile Include="AddScript\Reaktion\Gear\CameraGear.cs" />
     <Compile Include="AddScript\Reaktion\Gear\ConstantMotionGear.cs" />
@@ -187,6 +192,7 @@
     <Compile Include="AddScript\Spawner.cs" />
     <Compile Include="AddScript\Spawner_Multi.cs" />
     <Compile Include="AddScript\Spawner_One.cs" />
+    <Compile Include="AddScript\DVRSDK\SteamVRMirror.cs" />
     <Compile Include="AddScript\VariableMotion.cs" />
     <Compile Include="AddScript\Visualizer.cs" />
     <Compile Include="Parameter\PluginParameter.cs" />

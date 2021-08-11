@@ -197,7 +197,7 @@ namespace AvatarDance
             copyAvatarsecondary.SetActive(true);
 
             OnAvatarDance();
-
+            DanceObject.SetActive(false);
             secondary.SetActive(true);
             SetupStage.SetActive(true);
 
@@ -255,6 +255,7 @@ namespace AvatarDance
         GameObject Stage;
         GameObject Bgm;
         GameObject Notes;
+        GameObject ReflectionProbe;
         GameObject DustPS;
         GameObject PileOfNotes;
         GameObject MenuBgm;
@@ -399,11 +400,13 @@ namespace AvatarDance
             //床とかいらないの消す
             if (!Notes) Notes = GameObject.Find("MenuEnvironmentManager/DefaultMenuEnvironment/Notes");
             if (!PileOfNotes) PileOfNotes = GameObject.Find("MenuEnvironmentManager/DefaultMenuEnvironment/PileOfNotes");
+            //if (!ReflectionProbe) ReflectionProbe = GameObject.Find("MenuEnvironmentCore/ReflectionProbe");
             if (!DustPS) DustPS = GameObject.Find("MenuMainCamera/DustPS");
             if (!MenuBgm) MenuBgm = GameObject.Find("SongPreviewPlayer");
             Notes.SetActive(false);
             PileOfNotes.SetActive(false);
             DustPS.SetActive(false);
+            //ReflectionProbe.SetActive(false);
 
             foreach (AudioSource ob in MenuBgm.GetComponentsInChildren<AudioSource>(true))
             {
@@ -633,17 +636,24 @@ namespace AvatarDance
                             setting.horizontal = 4;
                             setting.vertical = 3;
                         }
-                        else if (names == "MirrorReflectionVR")
-                        {
-                            Logger.log?.Debug($"MirrorReflectionVR Attach");
-                            childTransform.AddComponent<MirrorReflectionVR>();
-                            var setting = childTransform.transform.GetComponent<MirrorReflectionVR>();
-                            setting.m_TextureSize = 1024*2;
-                            setting.m_DisablePixelLights = true;
-                            setting.m_ClipPlaneOffset = 0;
+                        else if (names == "SteamVRMirror")
+                        { //ボツ
+                            Logger.log?.Debug($"SteamVRMirror Attach");
+                            childTransform.AddComponent<DVRSDK.Plugins.SteamVRMirror>();
+                            var setting = childTransform.transform.GetComponent<DVRSDK.Plugins.SteamVRMirror>();
+                            //setting.m_TextureSize = 1024*2;
+                            //setting.m_DisablePixelLights = true;
+                            //setting.m_ClipPlaneOffset = 0f;
+                        }
+                        else if (names == "ProbeController")
+                        { //ReflectionProbe版 何故か真っ黒になるのでボツかも
+                            Logger.log?.Debug($"ProbeController Attach");
+                            childTransform.AddComponent<ProbeController>();
+                            var setting = childTransform.transform.GetComponent<ProbeController>();
+                            setting.SetUp(childTransform);
                         }
                         else if (names == "MirrorReflection")
-                        {
+                        { //VR非対応
                             Logger.log?.Debug($"MirrorReflection Attach");
                             childTransform.AddComponent<MirrorReflection>();
                             var setting = mirrorReflection = childTransform.transform.GetComponent<MirrorReflection>();
@@ -655,8 +665,8 @@ namespace AvatarDance
                             var mesh = childTransform.transform.GetComponent<MeshRenderer>();
                             setting.m_matCopyDepth = mesh.materials[1];
 
-                            //1個目のマテリアルにセンター位置あるので設定する
-                            mesh.materials[0].SetVector("_Center", PluginParameter.Instance.Position() * DanceVRM.transform.localScale.x);
+                            //1個目のマテリアルにセンター位置あるので設定する(Visualizerに移動
+                            //mesh.materials[0].SetVector("_Center", PluginParameter.Instance.Position() * DanceVRM.transform.localScale.x);
 
 
                             //RenderTexture再設定
@@ -763,6 +773,10 @@ namespace AvatarDance
                             setting.spectrum3.name = "Spectrum 3";
                             setting.spectrum4.name = "Spectrum 4";
 
+                            //1個目のマテリアルにセンター位置あるので設定する
+                            var mesh = childTransform.transform.GetComponent<MeshRenderer>();
+                            mesh.materials[0].SetVector("_Center", PluginParameter.Instance.Position() * DanceVRM.transform.localScale.x);
+
                         }
                         else if (names.Contains("AnimatorGear"))
                         {
@@ -820,7 +834,7 @@ namespace AvatarDance
             if (Timeline != null) GameObject.Destroy(Timeline);
             if (SetupStage != null) GameObject.Destroy(SetupStage);
             if (Apends != null) GameObject.Destroy(Apends);
-
+            if (ReflectionProbe != null) ReflectionProbe.SetActive(true);
             //追加オブジェクト分生きてたら削除する
 
 

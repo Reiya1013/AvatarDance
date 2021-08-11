@@ -9,9 +9,9 @@
       </vertical>
 
       <vertical pad-top="5" preferred-width="60" child-control-height="false" child-expand-height="false">
-        <slider-setting text="Offset(X Position)" value="x-position" min="-20" max="20" increment="0.1" on-change="OnXPositionChange"/>
-        <slider-setting text="Offset(Y Position)" value="y-position" min="-20" max="20" increment="0.1" on-change="OnYPositionChange"/>
-        <slider-setting text="Offset(Z Position)" value="z-position" min="-20" max="20" increment="0.1" on-change="OnZPositionChange"/>
+        <slider-setting text="Offset(X Position)" value="x-position" min="-10" max="10" increment="0.05" on-change="OnXPositionChange"/>
+        <slider-setting text="Offset(Y Position)" value="y-position" min="-10" max="10" increment="0.05" on-change="OnYPositionChange"/>
+        <slider-setting text="Offset(Z Position)" value="z-position" min="-10" max="10" increment="0.05" on-change="OnZPositionChange"/>
 
         <slider-setting text="Offset(X Rotation)" value="x-rotation" min="0" max="360" increment="1" on-change="OnXRotationChange"/>
         <slider-setting text="Offset(Y Rotation)" value="y-rotation" min="0" max="360" increment="1" on-change="OnYRotationChange"/>

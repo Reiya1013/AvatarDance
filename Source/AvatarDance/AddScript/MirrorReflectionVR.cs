@@ -1,11 +1,8 @@
-﻿// original source from: http://wiki.unity3d.com/index.php/MirrorReflection4
-// taken from: https://forum.unity.com/threads/mirror-reflections-in-vr.416728/#post-3691759
-
+﻿
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.XR;
-using UnityEngine.VR;
 
 
 // This is in fact just the Water script from Pro Standard Assets,
@@ -47,7 +44,7 @@ public class MirrorReflectionVR : MonoBehaviour
         if (!enabled || !rend || !rend.sharedMaterial || !rend.enabled)
             return;
 
-        Camera cam = Camera.main;
+        Camera cam = Camera.current;
         if (!cam)
             return;
 
@@ -92,12 +89,14 @@ public class MirrorReflectionVR : MonoBehaviour
         if (cam.stereoEnabled)
         {
             worldToCameraMatrix = cam.GetStereoViewMatrix(eye) * reflection;
+            //worldToCameraMatrix = cam.worldToCameraMatrix * reflection;
             Vector3 eyeOffset;
             if (eye == Camera.StereoscopicEye.Left)
-                eyeOffset = UnityEngine.XR.InputTracking.GetLocalPosition(XRNode.LeftEye);
+                eyeOffset = InputTracking.GetLocalPosition(XRNode.LeftEye);
             else
-                eyeOffset = UnityEngine.XR.InputTracking.GetLocalPosition(XRNode.RightEye);
+                eyeOffset = InputTracking.GetLocalPosition(XRNode.RightEye);
             eyeOffset.z = 0.0f;
+            //eyeOffset.y *= -1;
             oldEyePos = cam.transform.position + cam.transform.TransformVector(eyeOffset);
         }
         else
@@ -106,9 +105,12 @@ public class MirrorReflectionVR : MonoBehaviour
             oldEyePos = cam.transform.position;
         }
 
-        Vector3 newEyePos = reflection.MultiplyPoint(oldEyePos);
-        reflectionCamera.transform.position = newEyePos;
+        //Vector3 newEyePos = reflection.MultiplyPoint(oldEyePos);
+        //reflectionCamera.transform.position = newEyePos;
 
+        // カメラ位置を使うエフェクト用にカメラ位置設定(worldToCameraMatrixを設定した時点で位置に関係なくレンダリングはされます)
+        reflectionCamera.transform.position = MatrixGetPosition(reflectionCamera.cameraToWorldMatrix);
+        reflectionCamera.transform.rotation = MatrixGetRotation(reflectionCamera.cameraToWorldMatrix);
         reflectionCamera.worldToCameraMatrix = worldToCameraMatrix;
 
         // Setup oblique projection matrix so that near plane is our reflection
@@ -137,7 +139,7 @@ public class MirrorReflectionVR : MonoBehaviour
         GL.invertCulling = true;
         //Vector3 euler = cam.transform.eulerAngles;
         //reflectionCamera.transform.eulerAngles = new Vector3(0, euler.y, euler.z);
-        reflectionCamera.transform.rotation = cam.transform.rotation;
+        //reflectionCamera.transform.rotation = cam.transform.rotation;
         reflectionCamera.Render();
         //reflectionCamera.transform.position = oldEyePos;
         GL.invertCulling = false;
@@ -155,7 +157,6 @@ public class MirrorReflectionVR : MonoBehaviour
 
         s_InsideRendering = false;
     }
-
 
     // Cleanup all the objects we possibly have created
     void OnDisable()
@@ -251,7 +252,9 @@ public class MirrorReflectionVR : MonoBehaviour
     // Given position/normal of the plane, calculates plane in camera space.
     private Vector4 CameraSpacePlane(Matrix4x4 worldToCameraMatrix, Vector3 pos, Vector3 normal, float sideSign)
     {
-        Vector3 offsetPos = pos + normal * m_ClipPlaneOffset;
+        Vector3 offsetPos = pos + normal;
+        if (m_ClipPlaneOffset != 0f)
+            offsetPos = pos + normal * m_ClipPlaneOffset;
         Vector3 cpos = worldToCameraMatrix.MultiplyPoint(offsetPos);
         Vector3 cnormal = worldToCameraMatrix.MultiplyVector(normal).normalized * sideSign;
         return new Vector4(cnormal.x, cnormal.y, cnormal.z, -Vector3.Dot(cpos, cnormal));
@@ -281,6 +284,32 @@ public class MirrorReflectionVR : MonoBehaviour
         reflectionMat.m33 = 1F;
     }
 
+    private static Quaternion MatrixGetRotation(Matrix4x4 matrix)
+    {
+        Quaternion q = new Quaternion();
+        q.w = Mathf.Sqrt(Mathf.Max(0, 1 + matrix.m00 + matrix.m11 + matrix.m22)) / 2;
+        q.x = Mathf.Sqrt(Mathf.Max(0, 1 + matrix.m00 - matrix.m11 - matrix.m22)) / 2;
+        q.y = Mathf.Sqrt(Mathf.Max(0, 1 - matrix.m00 + matrix.m11 - matrix.m22)) / 2;
+        q.z = Mathf.Sqrt(Mathf.Max(0, 1 - matrix.m00 - matrix.m11 + matrix.m22)) / 2;
+        q.x = CopySign(q.x, matrix.m21 - matrix.m12);
+        q.y = CopySign(q.y, matrix.m02 - matrix.m20);
+        q.z = CopySign(q.z, matrix.m10 - matrix.m01);
+        return q;
+    }
+    private static float CopySign(float sizeval, float signval)
+    {
+        return Mathf.Sign(signval) == 1 ? Mathf.Abs(sizeval) : -Mathf.Abs(sizeval);
+    }
+
+    private static Vector3 MatrixGetPosition(Matrix4x4 matrix)
+    {
+        var x = matrix.m03;
+        var y = matrix.m13;
+        var z = matrix.m23;
+
+        return new Vector3(x, y, z);
+    }
+
     // taken from http://www.terathon.com/code/oblique.html
     private static void MakeProjectionMatrixOblique(ref Matrix4x4 matrix, Vector4 clipPlane)
     {
@@ -305,4 +334,5 @@ public class MirrorReflectionVR : MonoBehaviour
         matrix[10] = c.z + 1.0F;
         matrix[14] = c.w;
     }
+
 }
