@@ -1,7 +1,7 @@
 # AvatarDance
 
 [VMCAvatar](https://github.com/nagatsuki/VMCAvatar-BS)を通して読み込んだAvatarに指定のライブをしてもらうMODです。  
-使用目的としては、Avatarの破綻確認をVR無いで見たいとか、休憩中に「踊っておいて私！」ってやるぐらいです。  
+使用目的としては、Avatarの破綻確認をVR内で見たいとか、休憩中に「踊っておいて私！」ってやるぐらいです。  
 また[VMCAvatarMaterialChange](https://github.com/Reiya1013/VMCAvatarMaterialChange)を併用することも可能となっております。  
 むしろ入れてください。BloomONにしてリッチな演出を楽しんでください！  
 そのためにEmissionとかも頑張りました！  
