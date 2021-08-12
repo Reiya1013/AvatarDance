@@ -147,6 +147,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AddScript\BackScreenRenderSet.cs" />
+    <Compile Include="AddScript\BlendShapeSyncController.cs" />
     <Compile Include="AddScript\CameraSwitcher.cs" />
     <Compile Include="AddScript\ConstantMotion.cs" />
     <Compile Include="AddScript\FaceSyncController.cs" />

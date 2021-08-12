@@ -116,7 +116,7 @@ namespace AvatarDance
             {
                 if (asset is GameObject gameObject)
                 {
-                    if (gameObject.name == "Dance_scene")
+                    if (gameObject.name.Contains("Dance_scene"))
                     {
                         DanceObject = gameObject;
                     }
@@ -132,6 +132,7 @@ namespace AvatarDance
         /// </summary>
         private void FaceSyncJsonLoad(string filename)
         {
+            Logger.log?.Debug($"FaceSyncJsonLoad {filename}");
             string loadName = filename.Replace(".dance", "_FaceSync.json");
             if (File.Exists(loadName))
             {
@@ -550,7 +551,7 @@ namespace AvatarDance
                 //PSc_で始まる場合は親オブジェクトにつける
                 if (childTransform.name.Contains("PSc_"))
                 {
-                    var names = childTransform.name.Substring(childTransform.name.IndexOf("_Sc_") + 4);
+                    var names = childTransform.name.Substring(childTransform.name.IndexOf("PSc_") + 4);
                     if (names == "FaceSyncController")
                     {
                         if (FaceParameter == null)
@@ -560,6 +561,22 @@ namespace AvatarDance
                             Logger.log?.Debug($"FaceSyncController Attach");
                             childTransform.transform.parent.gameObject.AddComponent<FaceSyncController>();
                             var setting = childTransform.transform.parent.transform.GetComponent<FaceSyncController>();
+
+                            setting.BaseFace = FaceParameter.BaseFace;
+                            setting.VRMFace = FaceParameter.VRMFace;
+
+                            setting.StartUp(DanceVRM);
+                        }
+                    }
+                    else if (names == "BlendShapeSyncController")
+                    {
+                        if (FaceParameter == null)
+                            Logger.log?.Debug($"BlendShapeSyncController Parameter Null");
+                        else
+                        {
+                            Logger.log?.Debug($"BlendShapeSyncController Attach");
+                            childTransform.transform.parent.gameObject.AddComponent<BlendShapeSyncController>();
+                            var setting = childTransform.transform.parent.transform.GetComponent<BlendShapeSyncController>();
 
                             setting.BaseFace = FaceParameter.BaseFace;
                             setting.VRMFace = FaceParameter.VRMFace;
