@@ -53,7 +53,7 @@ namespace AvatarDance
         private AssetBundle assetBundle;
 
         /// <summary>
-        /// 変更MaterialChangeファイル一覧取得
+        /// 変更Danceファイル一覧取得
         /// </summary>
         /// <returns></returns>
         public string[] GetDanceName()
@@ -71,7 +71,7 @@ namespace AvatarDance
         }
 
         /// <summary>
-        /// AssetBundleからBS_Saderを読み込む
+        /// AssetBundleからDance_sceneを読み込む
         /// </summary>
         private void DanceLoad()
         {
@@ -90,8 +90,8 @@ namespace AvatarDance
                         DanceObject = gameObject;
                 }
             }
-           
         }
+
         /// <summary>
         /// アセットバンドルを読み込んで保持しておく
         /// </summary>
