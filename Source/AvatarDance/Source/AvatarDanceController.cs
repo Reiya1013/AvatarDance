@@ -39,7 +39,7 @@ namespace AvatarDance
 
 
             //AvatarDanceMenu
-            MenuButton menuButton = new MenuButton("Avatar Dance", "scribble mod", ShowModFlowCoordinator, true);
+            MenuButton menuButton = new MenuButton("Avatar Dance", "Avatar Dance", ShowModFlowCoordinator, true);
             MenuButtons.instance.RegisterButton(menuButton);
 
 

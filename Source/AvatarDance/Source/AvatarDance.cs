@@ -414,7 +414,7 @@ namespace AvatarDance
                 ob.Stop();
             }
 
-            MenuBgm.SetActive(false);
+            //MenuBgm.SetActive(false);
 
         }
 
